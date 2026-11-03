@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sales &amp; Revenue Analysis Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{--bg:#f3f6fb;--card:#fff;--tx:#14213d;--mu:#5b6b86;--bd:#dbe3f0;--ac:#2563eb;--ac2:#0ea5a4;--ac3:#f59e0b;--ac4:#e11d48;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1729;--card:#18233b;--tx:#e8eefc;--mu:#97a6c4;--bd:#2a3a5c;--ac:#6ea0ff;--ac2:#2dd4bf;--ac3:#fbbf24;--ac4:#fb7185}}
+:root[data-theme="dark"]{--bg:#0f1729;--card:#18233b;--tx:#e8eefc;--mu:#97a6c4;--bd:#2a3a5c;--ac:#6ea0ff;--ac2:#2dd4bf;--ac3:#fbbf24;--ac4:#fb7185}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:"Segoe UI",system-ui,-apple-system,Arial,sans-serif;padding:14px}
+h1{font-size:20px;margin:0 0 2px}
+.sub{color:var(--mu);font-size:13px;margin-bottom:12px}
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.filters label{font-size:12px;color:var(--mu);display:flex;flex-direction:column;gap:3px;flex:1;min-width:95px}
+select{padding:8px;border-radius:8px;border:1px solid var(--bd);background:var(--card);color:var(--tx);font-size:14px}
+button{padding:8px 12px;border-radius:8px;border:1px solid var(--bd);background:var(--card);color:var(--tx);cursor:pointer;align-self:flex-end}
+.kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:12px}
+.kpi,.card{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:12px}
+.kpi small{color:var(--mu);font-size:12px}
+.kpi b{display:block;font-size:22px;margin-top:4px}
+.grid{display:grid;grid-template-columns:1fr;gap:10px}
+.card h2{font-size:14px;margin:0 0 8px}
+.box{position:relative;height:250px}
+@media(min-width:760px){.kpis{grid-template-columns:repeat(4,1fr)}.grid{grid-template-columns:1fr 1fr}.wide{grid-column:span 2}}
+</style>
+</head>
+<body>
+<h1>Sales &amp; Revenue Analysis Dashboard</h1>
+<div class="sub">Sample data, 2024–2025. Use the filters to explore.</div>
+<div class="filters">
+<label>Year<select id="fy"></select></label>
+<label>Region<select id="fr"></select></label>
+<label>Category<select id="fc"></select></label>
+<button id="rs">Reset</button>
+</div>
+<div class="kpis">
+<div class="kpi"><small>Total sales</small><b id="k1"></b></div>
+<div class="kpi"><small>Total profit</small><b id="k2"></b></div>
+<div class="kpi"><small>Total orders</small><b id="k3"></b></div>
+<div class="kpi"><small>Avg order value</small><b id="k4"></b></div>
+</div>
+<div class="grid">
+<div class="card wide"><h2>Revenue trend by month</h2><div class="box"><canvas id="c1"></canvas></div></div>
+<div class="card"><h2>Top 10 products by sales</h2><div class="box"><canvas id="c2"></canvas></div></div>
+<div class="card"><h2>Sales by category</h2><div class="box"><canvas id="c3"></canvas></div></div>
+<div class="card wide"><h2>Sales by region</h2><div class="box"><canvas id="c4"></canvas></div></div>
+</div>
+<script>
+var seed=42;function rnd(){seed=(seed*1664525+1013904223)%4294967296;return seed/4294967296}
+var P=[["Laptop","Technology",800],["Smartphone","Technology",600],["Headphones","Technology",120],["Monitor","Technology",300],["Office Chair","Furniture",220],["Desk","Furniture",350],["Bookcase","Furniture",260],["Notebook Set","Office Supplies",25],["Printer Paper","Office Supplies",40],["Pen Pack","Office Supplies",15]];
+var R=["North","South","East","West"],M=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"],D=[];
+for(var i=0;i<900;i++){var p=P[Math.floor(rnd()*P.length)],m=Math.floor(rnd()*12),y=2024+Math.floor(rnd()*2),q=1+Math.floor(rnd()*5);
+var seas=1+(m>8?0.3:0)+(y==2025?0.15:0);var s=Math.round(p[2]*q*seas*(0.9+rnd()*0.2));
+D.push({y:y,m:m,r:R[Math.floor(rnd()*4)],c:p[1],p:p[0],s:s,pr:Math.round(s*(0.08+rnd()*0.22))})}
+function fill(id,arr,all){var e=document.getElementById(id);e.innerHTML="<option value=''>"+all+"</option>"+arr.map(function(a){return"<option>"+a+"</option>"}).join("")}
+fill("fy",[2024,2025],"All years");fill("fr",R,"All regions");fill("fc",["Technology","Furniture","Office Supplies"],"All categories");
+var fmt=function(n){return"₹"+Math.round(n).toLocaleString("en-IN")};
+var cs={};
+function mk(id,type,labels,data,col,opt){if(cs[id]){cs[id].data.labels=labels;cs[id].data.datasets[0].data=data;cs[id].update();return}
+var tx=getComputedStyle(document.documentElement).getPropertyValue("--mu").trim()||"#5b6b86";Chart.defaults.color=tx;
+cs[id]=new Chart(document.getElementById(id),{type:type,data:{labels:labels,datasets:[{data:data,backgroundColor:col,borderColor:type=="line"?col:undefined,tension:.3,fill:false,borderWidth:type=="line"?3:0}]},options:Object.assign({responsive:true,maintainAspectRatio:false,plugins:{legend:{display:type=="doughnut"}}},opt||{})})}
+function agg(rows,key){var o={};rows.forEach(function(d){o[d[key]]=(o[d[key]]||0)+d.s});return o}
+function upd(){var y=fy.value,r=fr.value,c=fc.value;
+var rows=D.filter(function(d){return(!y||d.y==y)&&(!r||d.r==r)&&(!c||d.c==c)});
+var S=0,Pf=0;rows.forEach(function(d){S+=d.s;Pf+=d.pr});
+k1.textContent=fmt(S);k2.textContent=fmt(Pf);k3.textContent=rows.length;k4.textContent=rows.length?fmt(S/rows.length):"₹0";
+var mo=M.map(function(_,i){return rows.filter(function(d){return d.m==i}).reduce(function(a,d){return a+d.s},0)});
+mk("c1","line",M,mo,"#2563eb");
+var pa=agg(rows,"p"),pk=Object.keys(pa).sort(function(a,b){return pa[b]-pa[a]}).slice(0,10);
+mk("c2","bar",pk,pk.map(function(k){return pa[k]}),"#0ea5a4",{indexAxis:"y"});
+var ca=agg(rows,"c"),ck=Object.keys(ca);
+mk("c3","doughnut",ck,ck.map(function(k){return ca[k]}),["#2563eb","#f59e0b","#e11d48"]);
+var ra=agg(rows,"r");
+mk("c4","bar",R,R.map(function(k){return ra[k]||0}),["#2563eb","#0ea5a4","#f59e0b","#e11d48"])}
+["fy","fr","fc"].forEach(function(i){document.getElementById(i).onchange=upd});
+rs.onclick=function(){fy.value=fr.value=fc.value="";upd()};
+upd();
+</script>
+</body>
+</html>
